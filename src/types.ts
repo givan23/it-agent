@@ -8,7 +8,10 @@ export type ActivityType =
     | 'replace_text_regex'
     | 'remove_text'
     | 'remove_import'
-    | 'ensure_import_exists';
+    | 'ensure_import_exists'
+    | 'ast_ensure_import_exists'
+    | 'ast_remove_import'
+    | 'ast_append_object_to_array';
 
 export interface AgentActivity {
     index: number;
@@ -20,6 +23,10 @@ export interface AgentActivity {
     replaceWith?: string;
     pattern?: string;
     flags?: string;
+    importModule?: string;
+    importDefaultName?: string;
+    arrayName?: string;
+    objectLiteral?: string;
 }
 
 export interface AgentTask {

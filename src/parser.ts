@@ -25,7 +25,10 @@ function isSupportedActivityType(type: string): type is ActivityType {
         type === 'replace_text_regex' ||
         type === 'remove_text' ||
         type === 'remove_import' ||
-        type === 'ensure_import_exists'
+        type === 'ensure_import_exists' ||
+        type === 'ast_ensure_import_exists' ||
+        type === 'ast_remove_import' ||
+        type === 'ast_append_object_to_array'
     );
 }
 
@@ -50,10 +53,14 @@ function parseActivityBlock(block: string, index: number): AgentActivity {
     const typeMatch = block.match(/Type:\s*(.+)/i);
     const targetMatch = block.match(/Target:\s*(.+)/i);
     const markerMatch = block.match(/Marker:\s*(.+)/i);
-    const searchTextMatch = block.match(/Search Text:\s*([\s\S]*?)(?=\n(?:Replace With|Pattern|Flags|Content):|$)/i);
-    const replaceWithMatch = block.match(/Replace With:\s*([\s\S]*?)(?=\n(?:Pattern|Flags|Content):|$)/i);
-    const patternMatch = block.match(/Pattern:\s*([\s\S]*?)(?=\n(?:Flags|Content):|$)/i);
+    const searchTextMatch = block.match(/Search Text:\s*([\s\S]*?)(?=\n(?:Replace With|Pattern|Flags|Content|Import Module|Import Default Name|Array Name|Object):|$)/i);
+    const replaceWithMatch = block.match(/Replace With:\s*([\s\S]*?)(?=\n(?:Pattern|Flags|Content|Import Module|Import Default Name|Array Name|Object):|$)/i);
+    const patternMatch = block.match(/Pattern:\s*([\s\S]*?)(?=\n(?:Flags|Content|Import Module|Import Default Name|Array Name|Object):|$)/i);
     const flagsMatch = block.match(/Flags:\s*(.+)/i);
+    const importModuleMatch = block.match(/Import Module:\s*(.+)/i);
+    const importDefaultNameMatch = block.match(/Import Default Name:\s*(.+)/i);
+    const arrayNameMatch = block.match(/Array Name:\s*(.+)/i);
+    const objectLiteralMatch = block.match(/Object:\s*([\s\S]*?)(?=\nContent:|$)/i);
     const contentMatch = block.match(/Content:\s*([\s\S]*)/i);
 
     if (!typeMatch?.[1]) {
@@ -68,7 +75,7 @@ function parseActivityBlock(block: string, index: number): AgentActivity {
 
     if (!isSupportedActivityType(rawType)) {
         throw new Error(
-            `Activity ${index}: Type non supportato "${rawType}". Valori ammessi: append_to_file, replace_entire_file, insert_after_marker, insert_before_marker, ensure_text_exists, replace_text, replace_text_regex, remove_text, remove_import, ensure_import_exists`
+            `Activity ${index}: Type non supportato "${rawType}".`
         );
     }
 
@@ -78,6 +85,10 @@ function parseActivityBlock(block: string, index: number): AgentActivity {
     const replaceWith = replaceWithMatch?.[1]?.trim();
     const pattern = patternMatch?.[1]?.trim();
     const flags = flagsMatch?.[1]?.trim();
+    const importModule = importModuleMatch?.[1]?.trim();
+    const importDefaultName = importDefaultNameMatch?.[1]?.trim();
+    const arrayName = arrayNameMatch?.[1]?.trim();
+    const objectLiteral = objectLiteralMatch?.[1]?.trim();
     const content = contentMatch?.[1]?.trim();
 
     if (isMarkerBasedActivity(rawType) && !marker) {
@@ -108,6 +119,22 @@ function parseActivityBlock(block: string, index: number): AgentActivity {
         }
     }
 
+    if (rawType === 'ast_ensure_import_exists' || rawType === 'ast_remove_import') {
+        if (!importModule) {
+            throw new Error(`Activity ${index}: Import Module mancante`);
+        }
+    }
+
+    if (rawType === 'ast_append_object_to_array') {
+        if (!arrayName) {
+            throw new Error(`Activity ${index}: Array Name mancante`);
+        }
+
+        if (!objectLiteral) {
+            throw new Error(`Activity ${index}: Object mancante`);
+        }
+    }
+
     return {
         index,
         type: rawType,
@@ -117,7 +144,11 @@ function parseActivityBlock(block: string, index: number): AgentActivity {
         searchText,
         replaceWith,
         pattern,
-        flags
+        flags,
+        importModule,
+        importDefaultName,
+        arrayName,
+        objectLiteral
     };
 }
 

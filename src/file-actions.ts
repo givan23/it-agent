@@ -2,6 +2,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { AgentActivity } from './types';
 import { logInfo } from './logger';
+import {
+    astAppendObjectToArray,
+    astEnsureImportExists,
+    astRemoveImport,
+} from './ast-file-actions';
 
 function ensureFileExists(filePath: string): void {
     if (!fs.existsSync(filePath)) {
@@ -159,8 +164,7 @@ function replaceTextRegex(
     const currentContent = readFile(target);
     const normalizedCurrentContent = normalizeLineEndings(currentContent);
     const normalizedReplaceWith = normalizeLineEndings(replaceWith);
-    const safeFlags = flags ?? '';
-    const regex = new RegExp(pattern, safeFlags);
+    const regex = new RegExp(pattern, flags ?? '');
 
     if (!regex.test(normalizedCurrentContent)) {
         throw new Error(`Pattern regex non trovato nel file: ${target}`);
@@ -189,7 +193,6 @@ function removeText(target: string, content: string): void {
     }
 
     const updatedNormalizedContent = normalizedCurrentContent.replace(normalizedContent, '');
-
     const finalContent = restoreOriginalLineEndings(updatedNormalizedContent, currentContent);
 
     writeFile(target, finalContent);
@@ -264,28 +267,24 @@ export function applyActivity(activity: AgentActivity): void {
             if (!activity.marker) {
                 throw new Error(`Activity ${activity.index}: Marker mancante`);
             }
-
             insertAfterMarker(activity.target, activity.marker, activity.content!);
             return;
         case 'insert_before_marker':
             if (!activity.marker) {
                 throw new Error(`Activity ${activity.index}: Marker mancante`);
             }
-
             insertBeforeMarker(activity.target, activity.marker, activity.content!);
             return;
         case 'replace_text':
             if (activity.searchText === undefined || activity.replaceWith === undefined) {
                 throw new Error(`Activity ${activity.index}: Search Text o Replace With mancanti`);
             }
-
             replaceText(activity.target, activity.searchText, activity.replaceWith);
             return;
         case 'replace_text_regex':
             if (activity.pattern === undefined || activity.replaceWith === undefined) {
                 throw new Error(`Activity ${activity.index}: Pattern o Replace With mancanti`);
             }
-
             replaceTextRegex(activity.target, activity.pattern, activity.replaceWith, activity.flags);
             return;
         case 'remove_text':
@@ -296,6 +295,15 @@ export function applyActivity(activity: AgentActivity): void {
             return;
         case 'ensure_import_exists':
             ensureImportExists(activity.target, activity.content!);
+            return;
+        case 'ast_ensure_import_exists':
+            astEnsureImportExists(activity);
+            return;
+        case 'ast_remove_import':
+            astRemoveImport(activity);
+            return;
+        case 'ast_append_object_to_array':
+            astAppendObjectToArray(activity);
             return;
         default:
             throw new Error(`Tipo attività non supportato: ${activity.type satisfies never}`);
